@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Logs</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h2 { color: #333; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 14px; }
+        th { background-color: #f2f2f2; }
+        tr:hover { background-color: #f9f9f9; }
+    </style>
+</head>
+<body>
+    <h2>Recent API Logs</h2>
+    <table>
+        <tr>
+            <th>Time (UTC)</th>
+            <th>Method</th>
+            <th>Path</th>
+            <th>IP</th>
+            <th>User</th>
+        </tr>
+        {% for log in logs %}
+        <tr>
+            <td>{{ log.time }}</td>
+            <td>{{ log.method }}</td>
+            <td>{{ log.path }}</td>
+            <td>{{ log.ip }}</td>
+            <td>{{ log.user }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>
