@@ -1,19 +1,18 @@
 import os
 import numpy as np
 from pymongo import MongoClient
-from urllib.parse import quote_plus
 from groq import Groq
 from sentence_transformers import SentenceTransformer
 import faiss
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 from dotenv import load_dotenv
-from datetime import datetime
+from datetime import datetime, timezone
 
 # ================== Load Environment Variables ==================
 load_dotenv()
 
 SECRET_KEY = os.getenv("SECRET_KEY")
-MONGO_PASSWORD = os.getenv("MONGO_PASSWORD")
+MONGO_URI = os.getenv("MONGO_URI")  # Full MongoDB URI
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 # ================== Flask Setup ==================
@@ -21,28 +20,30 @@ app = Flask(__name__)
 app.secret_key = SECRET_KEY
 
 # ================== MongoDB Connection ==================
-encoded_password = quote_plus(MONGO_PASSWORD)
-client_mongo = MongoClient(
-    f"mongodb+srv://sujan:{encoded_password}@cluster0.6eacggy.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
-)
-db = client_mongo["apiasservice"]
-collection = db["studentdataset"]
-teachers_collection = db["teachers"]
-logs_collection = db["api_logs"]  # logs collection
+try:
+    client_mongo = MongoClient(MONGO_URI)
+    db = client_mongo["apiasservice"]
+    collection = db["studentdataset"]
+    teachers_collection = db["teachers"]
+    logs_collection = db["api_logs"]
+    print("✅ Connected to MongoDB successfully!")
+except Exception as e:
+    print(f"❌ MongoDB connection error: {str(e)}")
+    raise
 
 # ================== Initialize Teachers Collection ==================
 def initialize_teachers():
     try:
         if "teachers" not in db.list_collection_names():
             db.create_collection("teachers")
-        
+
         existing_teacher = teachers_collection.find_one({"username": "sujan"})
         if not existing_teacher:
             teachers_collection.insert_one({
                 "username": "sujan",
-                "password": "SAWQ#@21",  # In production, hash this!
+                "password": "SAWQ#@21",  # ⚠️ Hash this in production
                 "role": "teacher",
-                "created_at": "2025-09-29"
+                "created_at": datetime.now(timezone.utc)
             })
             print("✅ Default teacher account created!")
     except Exception as e:
@@ -109,19 +110,20 @@ def authenticate_teacher(username, password):
         return False
 
 # ================== Request Logger ==================
-
 @app.before_request
 def log_request():
-    log_entry = {
-        "time": datetime.now(timezone.utc),  # timezone-aware datetime
-        "method": request.method,
-        "path": request.path,
-        "ip": request.remote_addr,
-        "user": session.get("user", "anonymous")
-    }
-    logs_collection.insert_one(log_entry)
-    print(f"[API HIT] {log_entry}")
-
+    try:
+        log_entry = {
+            "time": datetime.now(timezone.utc),
+            "method": request.method,
+            "path": request.path,
+            "ip": request.remote_addr,
+            "user": session.get("user", "anonymous")
+        }
+        logs_collection.insert_one(log_entry)
+        print(f"[API HIT] {log_entry}")
+    except Exception as e:
+        print(f"Log insert error: {str(e)}")
 
 # ================== Routes ==================
 @app.route("/", methods=["GET", "POST"])
@@ -187,8 +189,9 @@ def server_error(error):
 
 # ================== Main ==================
 if __name__ == "__main__":
-    import os
-    port = int(os.environ.get("PORT", 5000))  # Render provides PORT
     print("🚀 Starting Teacher Portal...")
-    app.run(host="0.0.0.0", port=port, debug=False)
-
+    print("Login credentials:")
+    print("Username: sujan")
+    print("Password: SAWQ#@21")
+    print("-" * 40)
+    app.run(debug=True, host="0.0.0.0", port=5000)
